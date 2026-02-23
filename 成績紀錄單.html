@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學生成績管理系統 (轉出管理版)</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --bg-color: #f4f7f6;
+            --header-bg: #ecf0f1;
+            --border-color: #bdc3c7;
+            --u1-color: #e8f6f3;
+            --u2-color: #fef9e7;
+            --u3-color: #f4ecf7;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --archive-color: #95a5a6;
+        }
+
+        body {
+            font-family: "Microsoft JhengHei", "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 移除數字輸入框箭頭 (保留給舊版相容) */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+
+        /* 頂部導航 */
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        header h1 { margin: 0; font-size: 1.2rem; }
+        
+        .header-controls button {
+            background-color: var(--accent-color);
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 8px;
+            font-size: 0.9rem;
+        }
+        .header-controls button:hover { opacity: 0.9; }
+
+        /* 主佈局 */
+        .container { display: flex; flex: 1; overflow: hidden; }
+
+        /* 左側邊欄 */
+        .sidebar {
+            width: 250px;
+            background-color: white;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-tabs { display: flex; border-bottom: 1px solid var(--border-color); }
+        .sidebar-tab {
+            flex: 1; text-align: center; padding: 10px 0; cursor: pointer;
+            background-color: #f8f9fa; font-size: 0.9rem; color: #666; transition: 0.2s;
+        }
+        .sidebar-tab:hover { background-color: #eaeaea; }
+        .sidebar-tab.active {
+            background-color: white; font-weight: bold; color: var(--primary-color);
+            border-bottom: 3px solid var(--accent-color);
+        }
+
+        .sidebar-header {
+            padding: 10px 15px; border-bottom: 1px solid #eee; font-weight: bold;
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 0.9rem; color: #555; background: #fff;
+        }
+
+        .add-class-btn { background: none; border: none; color: var(--accent-color); font-size: 1.5rem; cursor: pointer; line-height: 1; }
+
+        #classList { flex: 1; overflow-y: auto; list-style: none; padding: 0; margin: 0; }
+
+        .class-item {
+            padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #f1f1f1;
+            transition: background 0.2s; display: flex; justify-content: space-between; align-items: center;
+        }
+        .class-item:hover { background-color: #f8f9fa; }
+        .class-item.active { background-color: var(--accent-color); color: white; }
+        
+        .class-actions { display: flex; gap: 2px; }
+        .icon-btn {
+            font-size: 0.9rem; background: none; border: none; cursor: pointer;
+            color: #ccc; padding: 4px; border-radius: 4px;
+        }
+        .class-item.active .icon-btn { color: #e0e0e0; }
+        .class-item.active .icon-btn:hover { background: rgba(255,255,255,0.2); color: white; }
+        .class-item:not(.active) .icon-btn:hover { background: #eee; color: #333; }
+        .delete-btn:hover { color: #e74c3c !important; }
+
+        /* 右側主內容 */
+        .main-content { flex: 1; padding: 20px; overflow: hidden; display: flex; flex-direction: column; }
+
+        .toolbar {
+            margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+            background: white; padding: 10px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .toolbar-group { display: flex; align-items: center; gap: 5px; border-right: 1px solid #ddd; padding-right: 15px; margin-right: 5px; }
+        .toolbar-group:last-child { border-right: none; }
+
+        .toolbar input[type="text"] { padding: 6px; border: 1px solid #ddd; border-radius: 4px; width: 150px; }
+
+        .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: 0.9rem; }
+        .btn-primary { background-color: var(--primary-color); }
+        .btn-success { background-color: var(--success-color); }
+        .btn-warning { background-color: var(--warning-color); }
+        .btn-danger { background-color: #e74c3c; }
+        .btn-archive { background-color: var(--archive-color); }
+        .btn-info { background-color: #17a2b8; }
+
+        /* 表格容器 */
+        .table-container {
+            flex: 1; overflow: auto; border: 1px solid var(--border-color);
+            background: white; border-radius: 4px; box-shadow: 0 0 10px rgba(0,0,0,0.05); position: relative;
+        }
+
+        table { border-collapse: collapse; width: 100%; min-width: 1250px; font-size: 0.9rem; }
+        th, td { padding: 8px 5px; text-align: center; border: 1px solid #ddd; white-space: nowrap; }
+
+        /* 凍結設定 */
+        thead tr:first-child th { background-color: var(--primary-color); color: white; position: sticky; top: 0; z-index: 20; }
+        thead tr:nth-child(2) th { background-color: var(--header-bg); color: #333; position: sticky; top: 36px; z-index: 15; font-size: 0.8rem; }
+        
+        th:nth-child(1), td:nth-child(1) { position: sticky; left: 0; background-color: white; z-index: 10; width: 30px; min-width: 30px; border-right: 1px solid #eee; }
+        th:nth-child(2), td:nth-child(2) { position: sticky; left: 30px; background-color: white; z-index: 10; border-right: 2px solid #ccc; width: 100px; min-width: 100px; }
+        
+        thead tr:first-child th:nth-child(1), thead tr:first-child th:nth-child(2) { z-index: 30; background-color: var(--primary-color); }
+        thead tr:nth-child(2) th:nth-child(1), thead tr:nth-child(2) th:nth-child(2) { z-index: 25; background-color: var(--header-bg); }
+
+        input.score-input { width: 40px; text-align: center; border: 1px solid transparent; background: transparent; font-size: 1rem; padding: 0; transition: all 0.2s; }
+        input.score-input:focus { border: 1px solid var(--accent-color); background: white; outline: none; }
+
+        /* 狀態標記樣式 (請假 / 補考) */
+        input.score-input.status-absent { background-color: #fcf3cf; color: #d35400; font-weight: bold; border-radius: 4px; }
+        input.score-input.status-makeup { background-color: #fadbd8; color: #c0392b; font-weight: bold; border-radius: 4px; }
+
+        .editable-name { cursor: pointer; border-bottom: 1px dashed #999; }
+        .editable-name:hover { color: var(--accent-color); border-bottom-color: var(--accent-color); }
+
+        .u1-col { background-color: var(--u1-color); }
+        .u2-col { background-color: var(--u2-color); }
+        .u3-col { background-color: var(--u3-color); }
+        .final-col { background-color: #ebf5fb; font-weight: bold;}
+        .result-col { background-color: #fdedec; font-weight: bold; color: #c0392b; cursor: help; }
+
+        /* 已轉出學生樣式 */
+        .student-row-archived { background-color: #f2f2f2 !important; color: #999; }
+        .student-row-archived input { color: #999; }
+        .student-row-archived .editable-name { text-decoration: line-through; }
+        .student-row-archived td:nth-child(1), .student-row-archived td:nth-child(2) { background-color: #e0e0e0 !important; }
+        
+        /* 轉出學生的狀態標記要變回灰色 */
+        .student-row-archived input.status-absent, 
+        .student-row-archived input.status-makeup { background-color: transparent !important; color: #999 !important; border-color: transparent !important; }
+
+        /* 總覽模式 */
+        body.overview-mode header { display: none; }
+        body.overview-mode .sidebar { display: none; }
+        body.overview-mode .main-content { padding: 5px; }
+        body.overview-mode table { min-width: 100%; font-size: 0.85rem; margin-bottom: 100px; }
+        body.overview-mode th, body.overview-mode td { padding: 4px 1px; }
+        body.overview-mode input.score-input { width: 40px; font-size: 0.9rem; }
+        body.overview-mode thead tr:nth-child(2) th { top: 29px; }
+        body.overview-mode thead tr:first-child th:nth-child(1) { display: none; }
+        body.overview-mode tbody td:nth-child(1) { display: none; }
+        body.overview-mode th:nth-child(2), body.overview-mode td:nth-child(2) { left: 0 !important; width: 90px; min-width: 90px; border-right: 2px solid #999; }
+
+        #exitOverviewBtn { display: none; position: fixed; bottom: 20px; right: 20px; z-index: 1000; padding: 10px 20px; background-color: var(--primary-color); color: white; border: none; border-radius: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); font-weight: bold; cursor: pointer; opacity: 0.7; }
+        body.overview-mode #exitOverviewBtn { display: block; }
+        #exitOverviewBtn:hover { opacity: 1; transform: scale(1.05); }
+
+        .empty-state { text-align: center; margin-top: 50px; color: #7f8c8d; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal { background: white; padding: 20px; border-radius: 8px; width: 300px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        
+        /* Checkbox Switch */
+        .switch-label { font-size: 0.9rem; color: #666; display: flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>GradeBook Pro (轉出管理版)</h1>
+    <div class="header-controls">
+        <button onclick="downloadData()">備份資料</button>
+        <button onclick="document.getElementById('fileInput').click()">還原資料</button>
+        <input type="file" id="fileInput" style="display:none" onchange="uploadData(this)">
+    </div>
+</header>
+
+<div class="container">
+    <div class="sidebar">
+        <div class="sidebar-tabs">
+            <div class="sidebar-tab active" id="tab-active" onclick="switchTab('active')">目前班級</div>
+            <div class="sidebar-tab" id="tab-archived" onclick="switchTab('archived')">歷史存檔</div>
+        </div>
+        <div class="sidebar-header">
+            <span id="listTitle">班級列表</span>
+            <button class="add-class-btn" id="btnAddClass" onclick="addClass()" title="新增班級">+</button>
+        </div>
+        <ul id="classList"></ul>
+    </div>
+
+    <div class="main-content">
+        <div class="toolbar" id="toolbar" style="display:none;">
+            <div class="toolbar-group">
+                <h2 id="currentClassName" style="margin:0;"></h2>
+                <button class="icon-btn" style="color:#666;" onclick="editCurrentClassName()" title="修改班級名稱">✏️</button>
+            </div>
+            
+            <div class="toolbar-group">
+                <button class="btn btn-info" onclick="toggleOverviewMode()">👁️ 全螢幕總覽</button>
+            </div>
+
+            <div class="toolbar-group">
+                <input type="text" id="newStudentName" placeholder="輸入學生姓名..." onkeypress="handleEnter(event)">
+                <button class="btn btn-primary" onclick="addStudent()">+ 新增</button>
+            </div>
+
+            <div class="toolbar-group">
+                <span style="font-size:0.9rem; color:#666;">批次：</span>
+                <button class="btn btn-warning" onclick="openTransferModal('move')" title="移動到他班 (拆班)">➦ 移動</button>
+                <button class="btn btn-success" onclick="openTransferModal('copy')" title="複製到他班 (升級)">★ 升級</button>
+                <button class="btn btn-archive" onclick="batchArchiveStudents()" title="隱藏並封存學生 (轉出/休學)">📦 轉出/封存</button>
+                <button class="btn btn-danger" onclick="batchDelete()" title="永久刪除">×</button>
+            </div>
+
+            <div class="toolbar-group" style="border:none;">
+                <label class="switch-label">
+                    <input type="checkbox" id="showArchivedStudents" onchange="renderTable()"> 顯示已轉出學生
+                </label>
+            </div>
+
+            <div class="toolbar-group" style="border:none; margin-left: auto;">
+                <span style="font-size:0.85rem; color:#888;">
+                    💡 狀態標記：輸入 <span style="color:#f39c12; font-weight:bold;">A</span> (Absent/請假) 或 <span style="color:#e74c3c; font-weight:bold;">M</span> (Make-up/補考) ，也可直接<strong>雙擊空格</strong>快速切換
+                </span>
+            </div>
+        </div>
+
+        <div class="table-container" id="tableContainer">
+            <div class="empty-state" id="emptyState">請先選擇或新增班級。</div>
+            <table id="gradeTable" style="display:none;">
+                <thead>
+                    <tr>
+                        <th rowspan="2"><input type="checkbox" onchange="toggleSelectAll(this)"></th>
+                        <th rowspan="2">姓名</th>
+                        <th colspan="4" class="u1-col">單元 1</th>
+                        <th colspan="4" class="u2-col">單元 2</th>
+                        <th colspan="4" class="u3-col">單元 3</th>
+                        <th rowspan="2" class="final-col">升級考</th>
+                        <th rowspan="2" class="result-col">課堂<br>平均</th>
+                        <th rowspan="2" class="result-col">複習<br>平均</th>
+                    </tr>
+                    <tr>
+                        <th class="u1-col">L1</th> <th class="u1-col">L2</th> <th class="u1-col">L3</th> <th class="u1-col" style="font-weight:bold; border-right:2px solid #ccc">總複</th>
+                        <th class="u2-col">L1</th> <th class="u2-col">L2</th> <th class="u2-col">L3</th> <th class="u2-col" style="font-weight:bold; border-right:2px solid #ccc">總複</th>
+                        <th class="u3-col">L1</th> <th class="u3-col">L2</th> <th class="u3-col">L3</th> <th class="u3-col" style="font-weight:bold; border-right:2px solid #ccc">總複</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<button id="exitOverviewBtn" onclick="toggleOverviewMode()">❌ 退出總覽模式</button>
+
+<div id="transferModal" class="modal-overlay">
+    <div class="modal">
+        <h3 id="transferModalTitle">移動學生</h3>
+        <p id="transferModalDesc">請選擇目標班級：</p>
+        <select id="targetClassSelect" style="width:100%; padding:8px; margin-bottom:10px;"></select>
+        <div style="font-size:0.85rem; color:#666; background:#f9f9f9; padding:8px; border-radius:4px; margin-bottom:10px;">
+            <span id="transferNote"></span>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn" onclick="closeTransferModal()" style="background:#95a5a6;">取消</button>
+            <button class="btn btn-primary" onclick="executeTransfer()">確定</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = 'gradeBookData_v1'; 
+    let appData = {};
+    let currentClassId = null;
+    let transferMode = 'move';
+    let viewMode = 'active';
+
+    window.onload = function() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) { try { appData = JSON.parse(saved); } catch(e) { appData = {}; } }
+        renderClassList();
+    };
+
+    function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); }
+    function toggleOverviewMode() { document.body.classList.toggle('overview-mode'); }
+
+    function switchTab(mode) {
+        viewMode = mode;
+        document.getElementById('tab-active').className = `sidebar-tab ${mode === 'active' ? 'active' : ''}`;
+        document.getElementById('tab-archived').className = `sidebar-tab ${mode === 'archived' ? 'active' : ''}`;
+        document.getElementById('btnAddClass').style.display = mode === 'active' ? 'block' : 'none';
+        document.getElementById('listTitle').innerText = mode === 'active' ? '班級列表' : '已封存班級';
+        currentClassId = null;
+        renderClassList();
+        document.getElementById('toolbar').style.display = 'none';
+        document.getElementById('gradeTable').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'block';
+        document.getElementById('emptyState').innerText = mode === 'active' ? "請選擇或新增班級" : "點選左側查看歷史紀錄";
+        document.body.classList.remove('overview-mode');
+    }
+
+    function addClass() {
+        const name = prompt("請輸入新班級名稱：");
+        if (name) {
+            const id = 'cls_' + Date.now();
+            appData[id] = { name: name, students: [], archived: false };
+            saveData(); renderClassList(); selectClass(id);
+        }
+    }
+
+    function renderClassList() {
+        const list = document.getElementById('classList');
+        list.innerHTML = '';
+        const keys = Object.keys(appData).filter(id => {
+            const isArchived = appData[id].archived === true;
+            return viewMode === 'active' ? !isArchived : isArchived;
+        });
+        keys.forEach(id => {
+            const cls = appData[id];
+            const li = document.createElement('li');
+            li.className = `class-item ${id === currentClassId ? 'active' : ''}`;
+            let actions = viewMode === 'active' ? 
+                `<button class="icon-btn" onclick="editClassName('${id}')">✏️</button><button class="icon-btn archive-btn" onclick="archiveClass('${id}')">📦</button><button class="icon-btn delete-btn" onclick="deleteClass('${id}')">×</button>` : 
+                `<button class="icon-btn" onclick="restoreClass('${id}')">♻️</button><button class="icon-btn delete-btn" onclick="deleteClass('${id}')">×</button>`;
+            li.innerHTML = `<span onclick="selectClass('${id}')" style="flex:1;">${cls.name}</span><div class="class-actions">${actions}</div>`;
+            list.appendChild(li);
+        });
+        if(keys.length === 0) list.innerHTML = `<li style="padding:15px; color:#999; text-align:center; font-size:0.85rem;">${viewMode === 'active' ? '無目前班級' : '無封存紀錄'}</li>`;
+    }
+
+    function archiveClass(id) {
+        event.stopPropagation();
+        if(confirm(`將 "${appData[id].name}" 移入歷史存檔？`)) {
+            appData[id].archived = true; saveData();
+            if(currentClassId === id) currentClassId = null;
+            renderClassList();
+            document.getElementById('toolbar').style.display = 'none';
+            document.getElementById('gradeTable').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'block';
+        }
+    }
+
+    function restoreClass(id) {
+        event.stopPropagation();
+        if(confirm(`還原 "${appData[id].name}" 到目前班級？`)) {
+            appData[id].archived = false; saveData();
+            renderClassList();
+            alert("班級已還原！");
+        }
+    }
+
+    function selectClass(id) {
+        if(!appData[id]) return;
+        currentClassId = id;
+        renderClassList();
+        document.getElementById('currentClassName').innerText = appData[id].name;
+        document.getElementById('toolbar').style.display = 'flex';
+        document.getElementById('gradeTable').style.display = 'table';
+        document.getElementById('emptyState').style.display = 'none';
+        
+        const isArchived = viewMode === 'archived';
+        const inputs = document.querySelectorAll('#toolbar input, #toolbar button:not(.btn-info)');
+        inputs.forEach(el => {
+            if(el.id !== 'currentClassName') { el.disabled = isArchived; el.style.opacity = isArchived ? 0.5 : 1; }
+        });
+        
+        document.getElementById('showArchivedStudents').checked = false;
+        renderTable();
+    }
+
+    function editClassName(id) {
+        event.stopPropagation();
+        const newName = prompt("請輸入新名稱：", appData[id].name);
+        if(newName && newName.trim() !== "") { appData[id].name = newName; saveData(); renderClassList(); if(currentClassId===id) document.getElementById('currentClassName').innerText = newName; }
+    }
+    function editCurrentClassName() { if(currentClassId) editClassName(currentClassId); }
+    function deleteClass(id) {
+        event.stopPropagation();
+        if (confirm(`永久刪除 "${appData[id].name}"？無法復原！`)) {
+            delete appData[id]; saveData();
+            if (currentClassId === id) { currentClassId = null; document.getElementById('toolbar').style.display = 'none'; document.getElementById('gradeTable').style.display = 'none'; document.getElementById('emptyState').style.display = 'block'; }
+            renderClassList();
+        }
+    }
+
+    function handleEnter(e) { if (e.key === 'Enter') addStudent(); }
+    function addStudent() {
+        if(viewMode === 'archived') return;
+        const input = document.getElementById('newStudentName');
+        const name = input.value.trim();
+        if (!name) return;
+        appData[currentClassId].students.push({ id: Date.now(), name: name, scores: Array(13).fill(""), archived: false });
+        input.value = ''; saveData(); renderTable();
+    }
+    
+    // 更新成績與狀態邏輯
+    function updateScore(el, studentIndex, scoreIndex) {
+        if(viewMode === 'archived') return;
+        let val = el.value.trim();
+        
+        // 快捷鍵：自動將 a 或 m 轉為狀態文字
+        if (val.toLowerCase() === 'a') val = '假';
+        else if (val.toLowerCase() === 'm') val = '補';
+        
+        // 更新輸入框文字
+        if (el.value !== val) el.value = val;
+
+        appData[currentClassId].students[studentIndex].scores[scoreIndex] = val;
+        saveData(); 
+        updateRowCalculation(studentIndex);
+
+        // 依據狀態動態更換 CSS 類別以加上底色
+        el.classList.remove('status-absent', 'status-makeup');
+        if (val === '假') el.classList.add('status-absent');
+        else if (val === '補') el.classList.add('status-makeup');
+    }
+
+    // 雙擊切換狀態邏輯
+    function cycleStatus(el, studentIndex, scoreIndex) {
+        if(viewMode === 'archived') return;
+        let val = el.value.trim();
+        
+        // 為了避免誤刪成績，只允許在空值、假、補之間循環
+        if (val === '' || val === '假' || val === '補') {
+            if (val === '') val = '假';
+            else if (val === '假') val = '補';
+            else if (val === '補') val = '';
+            
+            el.value = val;
+            updateScore(el, studentIndex, scoreIndex);
+        }
+    }
+
+    function editStudentName(index) {
+        if(viewMode === 'archived') return;
+        const student = appData[currentClassId].students[index];
+        const newName = prompt("修改姓名：", student.name);
+        if (newName && newName.trim() !== "") { student.name = newName; saveData(); renderTable(); }
+    }
+    
+    function calculateAverages(scores) {
+        const lessonIndices = [0,1,2, 4,5,6, 8,9,10];
+        const reviewIndices = [3, 7, 11];
+        function getSmartAvg(indices) {
+            let sum = 0, count = 0;
+            indices.forEach(idx => {
+                let val = scores[idx];
+                // 這裡會自動略過 "假" 與 "補" 的非數字字串，不影響平均
+                if(val !== "" && val !== null && val !== undefined) {
+                    let num = parseFloat(val);
+                    if(!isNaN(num)) { sum += num; count++; }
+                }
+            });
+            return count === 0 ? "-" : (sum / count).toFixed(1);
+        }
+        return { lessonAvg: getSmartAvg(lessonIndices), reviewAvg: getSmartAvg(reviewIndices) };
+    }
+    
+    function renderTable() {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        const students = appData[currentClassId].students;
+        const isArchivedView = viewMode === 'archived';
+        const showArchived = document.getElementById('showArchivedStudents').checked;
+
+        students.forEach((stu, sIdx) => {
+            const isStudentArchived = stu.archived === true;
+            if (isStudentArchived && !showArchived) return;
+
+            const tr = document.createElement('tr');
+            if (isStudentArchived) tr.classList.add('student-row-archived');
+
+            let html = `<td><input type="checkbox" class="stu-checkbox" value="${sIdx}" ${isArchivedView?'disabled':''}></td>`;
+            html += `<td><span class="${isArchivedView?'':'editable-name'}" onclick="editStudentName(${sIdx})">${stu.name}${isStudentArchived ? ' (轉)' : ''}</span></td>`;
+            
+            for(let i=0; i<13; i++) {
+                let bgClass = '';
+                if(i < 4) bgClass = 'u1-col'; else if(i < 8) bgClass = 'u2-col'; else if(i < 12) bgClass = 'u3-col'; else bgClass = 'final-col';
+                let style = '';
+                if([3, 7, 11].includes(i)) style = 'border-right: 2px solid #ccc; font-weight:bold;';
+                
+                let val = stu.scores[i] === undefined ? "" : stu.scores[i];
+                let extraClass = '';
+                if (val === '假') extraClass = 'status-absent';
+                else if (val === '補') extraClass = 'status-makeup';
+
+                // 將 input type 調整為 text 才能順利輸入中文，並加入事件綁定
+                html += `<td class="${bgClass}" style="${style}">
+                            <input type="text" autocomplete="off" class="score-input ${extraClass}" value="${val}" 
+                                   ${isArchivedView ? 'disabled' : ''} 
+                                   oninput="updateScore(this, ${sIdx}, ${i})"
+                                   ondblclick="cycleStatus(this, ${sIdx}, ${i})"
+                                   title="雙擊空格可快速切換狀態">
+                         </td>`;
+            }
+            const calcs = calculateAverages(stu.scores);
+            html += `<td class="result-col" id="avg-lesson-${sIdx}">${calcs.lessonAvg}</td><td class="result-col" id="avg-review-${sIdx}">${calcs.reviewAvg}</td>`;
+            tr.innerHTML = html;
+            tbody.appendChild(tr);
+        });
+    }
+    
+    function updateRowCalculation(sIdx) {
+        const scores = appData[currentClassId].students[sIdx].scores;
+        const calcs = calculateAverages(scores);
+        document.getElementById(`avg-lesson-${sIdx}`).innerText = calcs.lessonAvg;
+        document.getElementById(`avg-review-${sIdx}`).innerText = calcs.reviewAvg;
+    }
+
+    function toggleSelectAll(source) { document.querySelectorAll('.stu-checkbox').forEach(cb => { if(!cb.disabled) cb.checked = source.checked; }); }
+    function getSelectedIndices() { return Array.from(document.querySelectorAll('.stu-checkbox:checked')).map(cb => parseInt(cb.value)).sort((a,b)=>b-a); }
+    
+    function batchDelete() {
+        if(viewMode === 'archived') return;
+        const indices = getSelectedIndices();
+        if(indices.length === 0) return alert("請先勾選學生！");
+        if(confirm(`確定永久刪除 ${indices.length} 名學生？這將無法復原。`)) {
+            indices.forEach(idx => appData[currentClassId].students.splice(idx, 1));
+            saveData(); renderTable(); document.querySelector('input[onchange="toggleSelectAll(this)"]').checked = false;
+        }
+    }
+
+    function batchArchiveStudents() {
+        if(viewMode === 'archived') return;
+        const indices = getSelectedIndices();
+        if(indices.length === 0) return alert("請先勾選學生！");
+        
+        const students = appData[currentClassId].students;
+        const hasArchived = indices.some(idx => students[idx].archived === true);
+
+        if (hasArchived) {
+            if(confirm(`您選取了包含已轉出的學生。要將他們「還原」為正常狀態嗎？`)) {
+                indices.forEach(idx => students[idx].archived = false);
+            }
+        } else {
+            if(confirm(`確定將這 ${indices.length} 名學生設為「轉出/封存」？\n他們將從列表中隱藏，但資料會保留。`)) {
+                indices.forEach(idx => students[idx].archived = true);
+            }
+        }
+        saveData(); 
+        renderTable();
+        document.querySelector('input[onchange="toggleSelectAll(this)"]').checked = false;
+    }
+
+    function openTransferModal(mode) {
+        if(viewMode === 'archived') return;
+        const indices = getSelectedIndices();
+        if(indices.length === 0) return alert("請先勾選學生！");
+        const classIds = Object.keys(appData).filter(id => id !== currentClassId && !appData[id].archived);
+        if(classIds.length === 0) return alert("沒有其他「目前班級」可供轉移。");
+        transferMode = mode;
+        const select = document.getElementById('targetClassSelect');
+        select.innerHTML = '';
+        classIds.forEach(id => { const option = document.createElement('option'); option.value = id; option.text = appData[id].name; select.appendChild(option); });
+        document.getElementById('transferModalTitle').innerText = mode === 'move' ? "移動學生 (拆班)" : "升級學生 (新班級)";
+        document.getElementById('transferNote').innerText = mode === 'move' ? "成績保留並移動。原班級將無此學生。" : "成績清空並複製到新班。原班級保留紀錄。";
+        document.getElementById('transferModal').style.display = 'flex';
+    }
+    function closeTransferModal() { document.getElementById('transferModal').style.display = 'none'; }
+    function executeTransfer() {
+        const targetClassId = document.getElementById('targetClassSelect').value;
+        const indices = getSelectedIndices();
+        const sourceStudents = appData[currentClassId].students;
+        const targetStudents = appData[targetClassId].students;
+        const studentsToProcess = indices.slice().reverse().map(idx => sourceStudents[idx]);
+        studentsToProcess.forEach(stu => {
+            let newStu = JSON.parse(JSON.stringify(stu)); 
+            if (transferMode === 'copy') { newStu.scores = Array(13).fill(""); newStu.id = Date.now() + Math.random(); newStu.archived = false; }
+            if (transferMode === 'move') { newStu.archived = false; }
+            targetStudents.push(newStu);
+        });
+        if (transferMode === 'move') indices.forEach(idx => sourceStudents.splice(idx, 1));
+        saveData(); closeTransferModal(); renderTable(); alert("操作完成！"); document.querySelector('input[onchange="toggleSelectAll(this)"]').checked = false;
+    }
+
+    function downloadData() {
+        const a = document.createElement('a');
+        a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+        a.download = "gradebook_backup_" + new Date().toISOString().slice(0,10) + ".json";
+        document.body.appendChild(a); a.click(); a.remove();
+    }
+    function uploadData(input) {
+        const file = input.files[0]; if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) { try { if(confirm("確定還原？")) { appData = JSON.parse(e.target.result); saveData(); location.reload(); } } catch(err) { alert("檔案錯誤"); } };
+        reader.readAsText(file);
+    }
+</script>
+
+</body>
+</html>
